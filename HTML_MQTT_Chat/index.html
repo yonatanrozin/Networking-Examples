@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+
+  <style>
+    table {
+      border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+      background-color: #eee;
+    }
+
+    td:nth-child(1) {
+      font-weight: bold;
+    }
+    td:nth-child(2) {
+      font-family: monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MQTT Demo</h1>
+  <ul>
+    <li>Hit <code>SEND MQTT</code> and type in your message.</li>
+    <li>Other users' messages will appear in the table below!</li>
+  </ul>
+
+
+  <button onclick="MQTTSend()">SEND MQTT</button>
+  <br/>
+  <div id="table"></div>
+  <script>
+    // use port 443 when connecting to a secure cloud-hosted broker like shiftr.io
+    // otherwise use the port of the broker (usually 8080 or 8081, but may be different)
+    const MQTT_HOST = 'public.cloud.shiftr.io'; //cloud-hosted server name or an IP address
+    const MQTT_PORT = 443;
+
+    // client id - used by broker to handle connections - should be unique
+    // id value itself doesn't matter much - NOT visible to receivers
+    const id = window.prompt("Enter your name:").replaceAll(/\W/g, "_");
+    const client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, id);
+
+    const data = {};
+
+    //send an MQTT message with specified payload and topic
+    function MQTTSend(payload = window.prompt("Enter message:"), topic = 'YR/' + String(id)) {
+      const message = new Paho.MQTT.Message(String(payload));
+      message.destinationName = topic;
+      // qos: 0 (default) for quick but unguaranteed delivery, 1 for guaranteed but slightly slower
+      message.qos = 1;
+      // message.retained = true; //message will be stored in broker and sent to new subscribers
+      client.send(message);
+    }
+
+    client.connect({
+      useSSL: true, //use when connecting to a secure cloud-hosted server
+      userName: "public", //remove if no authentication needed
+      password: "public", //remove if no authentication needed
+      onSuccess: function () {
+        client.subscribe("YR/#");
+        //client.subscribe("anotherTopic");
+      }
+    });
+    client.onMessageArrived = function (msg) {
+      const topic = msg.destinationName;
+      const payload = msg.payloadString;
+
+      //do stuff with message payload and topic here
+      console.log(`Message with topic ${topic} received: ${payload}`)
+      data[topic] = payload;
+      document.getElementById("table").innerHTML =
+        `<table>${Object.entries(data).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>`;
+    }
+  </script>
+</body>
+
+</html>
